@@ -6,7 +6,8 @@ import androidx.room.ColumnInfo
 @Entity
 data class User(
     @PrimaryKey(autoGenerate = true) val uid: Int = 0,
-    @ColumnInfo(name = "first_name") val firstName: String?,
-    @ColumnInfo(name = "last_name") val lastName: String?
-
+    @ColumnInfo(name = "first_name") val firstName: String,
+    @ColumnInfo(name = "last_name") val lastName: String,
+    @ColumnInfo(name = "age") val age: Int,
+    @ColumnInfo(name = "career") val career: String
 )

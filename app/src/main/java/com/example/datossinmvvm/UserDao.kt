@@ -4,6 +4,7 @@ import androidx.room.Query
 import androidx.room.Insert
 import kotlinx.coroutines.flow.Flow
 import androidx.room.Delete
+import androidx.room.Update
 
 @Dao
 interface UserDao {
@@ -18,4 +19,8 @@ interface UserDao {
 
     @Delete
     suspend fun delete(user: User)
+
+    @Update
+    suspend fun update(user: User)
+
 }

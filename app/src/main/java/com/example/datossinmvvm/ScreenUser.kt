@@ -43,47 +43,48 @@ import androidx.compose.material.icons.filled.Delete
 @Composable
 fun ScreenUser() {
     val context = LocalContext.current
-    val db = Room.databaseBuilder(
-        context,
-        UserDatabase::class.java,
-        "user_db"
-    ).build()
+    val db = remember {
+        Room.databaseBuilder(
+            context.applicationContext,
+            UserDatabase::class.java,
+            "user_db"
+        ).fallbackToDestructiveMigration().build()
+    }
     val dao = db.userDao()
+
     val coroutineScope = rememberCoroutineScope()
 
     var id by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf("") }
+    var career by remember { mutableStateOf("") }
     var mostrarLista by remember { mutableStateOf(false) }
+
     val users by dao.getAll().collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestión de Usuarios") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                ),
+                title = { Text("CRUD Usuarios") },
                 actions = {
-                    // Botón para agregar usuario
+                    // Agregar usuario
                     IconButton(onClick = {
-                        val user = User(0, firstName, lastName)
-                        coroutineScope.launch {
-                            dao.insert(user)
-                        }
+                        val ageInt = age.toIntOrNull() ?: 0
+                        val user = User(0, firstName, lastName, ageInt, career)
+                        coroutineScope.launch { dao.insert(user) }
                         firstName = ""
                         lastName = ""
+                        age = ""
+                        career = ""
                     }) {
                         Icon(Icons.Default.Add, contentDescription = "Agregar Usuario")
                     }
-
-                    // Botón para mostrar/ocultar lista
+                    // Listar usuarios
                     IconButton(onClick = { mostrarLista = !mostrarLista }) {
                         Icon(Icons.Default.List, contentDescription = "Listar Usuarios")
                     }
-
+                    // Eliminar último usuario
                     IconButton(onClick = {
                         coroutineScope.launch {
                             val lastUser = dao.getLastUser()
@@ -104,7 +105,6 @@ fun ScreenUser() {
         ) {
             Spacer(Modifier.height(20.dp))
 
-            // Campos de entrada
             OutlinedTextField(
                 value = id,
                 onValueChange = { id = it },
@@ -134,12 +134,33 @@ fun ScreenUser() {
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = age,
+                onValueChange = { age = it },
+                label = { Text("Edad") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = career,
+                onValueChange = { career = it },
+                label = { Text("Carrera") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Spacer(Modifier.height(20.dp))
 
-            // Mostrar la lista cuando el usuario la active
             if (mostrarLista) {
                 Text(
-                    text = users.joinToString("\n") { "${it.uid} - ${it.firstName} - ${it.lastName}" },
+                    text = users.joinToString("\n") {
+                        "${it.uid} - ${it.firstName} ${it.lastName}, ${it.age} años, ${it.career}"
+                    },
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -148,7 +169,6 @@ fun ScreenUser() {
         }
     }
 }
-
 
 
 
