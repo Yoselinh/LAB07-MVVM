@@ -21,96 +21,135 @@ import androidx.compose.ui.unit.sp
 import android.content.Context
 import androidx.room.Room
 import android.util.Log
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.fillMaxWidth
-import kotlinx.coroutines.flow.first
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Delete
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScreenUser() {
     val context = LocalContext.current
-    val db = crearDatabase(context)
+    val db = Room.databaseBuilder(
+        context,
+        UserDatabase::class.java,
+        "user_db"
+    ).build()
     val dao = db.userDao()
     val coroutineScope = rememberCoroutineScope()
 
-    var userIdText by remember { mutableStateOf("") }
+    var id by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
-    var dataUser by remember { mutableStateOf("") }
+    var mostrarLista by remember { mutableStateOf(false) }
+    val users by dao.getAll().collectAsState(initial = emptyList())
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Spacer(Modifier.height(50.dp))
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Gestión de Usuarios") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                ),
+                actions = {
+                    // Botón para agregar usuario
+                    IconButton(onClick = {
+                        val user = User(0, firstName, lastName)
+                        coroutineScope.launch {
+                            dao.insert(user)
+                        }
+                        firstName = ""
+                        lastName = ""
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Agregar Usuario")
+                    }
 
-        TextField(
-            value = userIdText,
-            onValueChange = { userIdText = it },
-            label = { Text("ID (solo lectura)") },
-            readOnly = true,
-            singleLine = true
-        )
+                    // Botón para mostrar/ocultar lista
+                    IconButton(onClick = { mostrarLista = !mostrarLista }) {
+                        Icon(Icons.Default.List, contentDescription = "Listar Usuarios")
+                    }
 
-        TextField(
-            value = firstName,
-            onValueChange = { firstName = it },
-            label = { Text("First Name: ") },
-            singleLine = true
-        )
-
-        TextField(
-            value = lastName,
-            onValueChange = { lastName = it },
-            label = { Text("Last Name:") },
-            singleLine = true
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        // Botón para agregar usuario
-        Button(
-            onClick = {
-                val user = User(0, firstName, lastName)
-                coroutineScope.launch {
-                    agregarUsuario(user, dao)
-                }
-                firstName = ""
-                lastName = ""
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Agregar Usuario", fontSize = 16.sp)
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Botón para listar usuarios
-        Button(
-            onClick = {
-                coroutineScope.launch {
-                    val users = dao.getAll().first()
-                    dataUser = users.joinToString("\n") { user ->
-                        "${user.uid} - ${user.firstName} - ${user.lastName}"
+                    IconButton(onClick = {
+                        coroutineScope.launch {
+                            val lastUser = dao.getLastUser()
+                            if (lastUser != null) dao.delete(lastUser)
+                        }
+                    }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar Último Usuario")
                     }
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Listar Usuarios", fontSize = 16.sp)
+            )
         }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            Spacer(Modifier.height(20.dp))
 
+            // Campos de entrada
+            OutlinedTextField(
+                value = id,
+                onValueChange = { id = it },
+                label = { Text("ID (solo lectura)") },
+                readOnly = true,
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
 
+            Spacer(Modifier.height(10.dp))
 
+            OutlinedTextField(
+                value = firstName,
+                onValueChange = { firstName = it },
+                label = { Text("First Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(10.dp))
 
-        // Texto que muestra la lista
-        Text(
-            text = dataUser,
-            fontSize = 20.sp
-        )
+            OutlinedTextField(
+                value = lastName,
+                onValueChange = { lastName = it },
+                label = { Text("Last Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // Mostrar la lista cuando el usuario la active
+            if (mostrarLista) {
+                Text(
+                    text = users.joinToString("\n") { "${it.uid} - ${it.firstName} - ${it.lastName}" },
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
+
+
 
 
 @Composable
@@ -130,5 +169,15 @@ suspend fun agregarUsuario(user: User, dao: UserDao) {
     }
 }
 
+suspend fun EliminarUltimoUsuario(dao: UserDao) {
+    try {
+        val lastUser = dao.getLastUser()
+        if (lastUser != null) {
+            dao.delete(lastUser)
+        }
+    } catch (e: Exception) {
+        Log.e("User", "Error al eliminar: ${e.message}")
+    }
+}
 
 

@@ -3,6 +3,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Insert
 import kotlinx.coroutines.flow.Flow
+import androidx.room.Delete
 
 @Dao
 interface UserDao {
@@ -11,4 +12,10 @@ interface UserDao {
 
     @Insert
     suspend fun insert(user: User)
+
+    @Query("SELECT * FROM User ORDER BY uid DESC LIMIT 1")
+    suspend fun getLastUser(): User?
+
+    @Delete
+    suspend fun delete(user: User)
 }
